@@ -27,17 +27,17 @@ def attention(input_bld, params):
   out_bld = jnp.einsum('blhk, hkd -> bld', wtd_values_blhk, params.w_o_hkd)
   return out_bld
 
-def ffn(x, w1, w2, w3):
+def ffn(x: jax.Array, w1: jax.Array, w2: jax.Array, w3: jax.Array) -> jax.Array:
   return jnp.dot(jax.nn.silu(jnp.dot(x, w1.T)) * jnp.dot(x, w3.T), w2.T)
 
-def transformer(tokens: jax.Array, params: jar.Array) -> jax.Array:
+def transformer(tokens: jax.Array, params: jax.Array) -> jax.Array:
   x = params.embedding[tokens]
   def scan_fn(h, layer_weights):
     h += attention(h, layer_weights)
-    h += ffn(h, layer_weights.w1, layer_weights.w2, layer_weights.w3)
+    h += ffn(norm(h, layer_weights.ffn_norm), layer_weights.w1, layer_weights.w2, layer_weights.w3)
     return h
   h = jax.lax.scan(scan_fn, x, params.layer_weights)
   h = norm(h, params.norm)
-  logits = jnp.matmul(h, params.embedding.T)
+  logits = jnp.dot(h, params.embedding.T)
   return logits
 
